@@ -1,5 +1,7 @@
 import pandas as p
 import numpy as n
+import matplotlib.pyplot as mat
+import seaborn as sea
 
 # reading the dataset
 
@@ -205,22 +207,41 @@ print(ds.duplicated().sum(
 ))
 
 "Analysis phase"
+print("#"*40 + '| Analysis phase |' + "#"*40)
+
 #Survival Rate
 print(" the survival rate; 0 = No , 1 = Yes")
-print(ds['survived'].value_counts())
+
+mapping = {0:"death", 1:"survive"}
+ds['survived'] = ds['survived'].map(mapping)
+
+survive = ds['survived'].value_counts()
+print(survive)
+
 
 '''
-the survival rate; 0 = No , 1 = Yes
+ the survival rate; 0 = No , 1 = Yes
 survived
-0    800
-1    500
+death      800
+survive    500
 
 How many survived?
  500
 How many died? 
  800
 
+survival rate of one person from enitre population on ship is 38.46%
+ 
 '''
+survival_rate = (500/1300)*100
+print(f" survival rate of one person from enitre population on ship is { survival_rate:.2f}%" )
+
+mat.pie( survive, labels= survive.index)
+mat.title('survival')
+mat.show()
+
+Rev_mapping = {"death":0, "survive":1}
+ds['survived'] = ds['survived'].map(Rev_mapping)
 
 # Male and Female survival rate
 q = ds.groupby(["gender",'survived'])['sn'].count()
@@ -234,13 +255,33 @@ female  0           126
 male    0           674
         1           161
 
+        
 Did women survive more?
 Yes, 178 more woman survive  then mans. means more then twice woman survive then mans
 
+ survival rate of females is 72.90%
+
 Did men survive less?       
 Yes total  548 more mans die then woman. means the death rate of man is more then 4 time of womans in that accident 
+survival rate of males is 19.28%
 '''
-print(f' the Avrage man-woman survival ratio was {ds.groupby("gender")["survived"].mean()}')
+data = ds.loc[ ds["survived"]==1]
+mat.figure(figsize=(8,9))
+sea.countplot(data = data, x = data["gender"], hue= data["gender"])
+mat.xlabel("Gender")
+mat.ylabel("survival_count")
+mat.title("MAle-Female survival difference")
+mat.show()
+gender_ratio = ds.groupby("gender")["survived"].mean()
+mat.pie( gender_ratio, labels= gender_ratio.index, autopct='%1.2f%%')
+mat.title('Male-Female Ratio')
+mat.show()
+
+survival_rate_of_man = (161/835)*100
+print(f" survival rate of males is { survival_rate_of_man:.2f}%")
+survival_rate_of_woman = (339/465)*100
+print(f" survival rate of females is { survival_rate_of_woman:.2f}%")
+
 
 # Passenger Class Analysis
 
@@ -266,8 +307,18 @@ Did rich passengers survive more?
 Yes, expensive class 1st have higher amount of survivals then 2nd and 3rd class
 
 '''
-print(" the survival rate :-",ds.groupby("pclass")["survived"].mean())
-
+mat.figure(figsize=(8,9))
+sea.countplot(data = data, x = data["pclass"], hue= data["pclass"])
+mat.xlabel("Class")
+mat.ylabel("survival_count")
+mat.title("class survival rate")
+mat.show()
+survival_rate_of_1st = (200/500)*100
+print(f" survival rate of 1st class is { survival_rate_of_1st:.2f}%")
+survival_rate_of_2nd = (119/500)*100
+print(f" survival rate of 2nd is class { survival_rate_of_2nd:.2f}%")
+survival_rate_of_3rd = (181/500)*100
+print(f" survival rate of 3rd class is { survival_rate_of_3rd:.2f}%")
 # Age Analysis
  
 print(ds["age"].describe())
@@ -285,7 +336,12 @@ Average age = 29.49
 Youngest passenger = 0.17 (~ 2 month)
 Oldest passenge = 80
 
-'''
+''' 
+# Give me all rows where the passenger's age is below 12.
+Koo = ds[ds['age']<12]
+print("##"*90)
+print(Koo)
+print("##"*90)
 
 # Fare Analysis
 
@@ -339,6 +395,18 @@ people with 10,0 does not make it alive
 """
 print('avrage survival rate:' ,"\n", ds.groupby("family")["survived"].mean())
 
+mat.figure(figsize=(8,9))
+sea.countplot(data = data, x = data["family"], hue= data["family"])
+mat.xlabel("families")
+mat.ylabel("survival_count")
+mat.title("family surive rate ")
+mat.show()
+
+fam_survi = ds["family"].value_counts()
+mat.pie( fam_survi, labels= fam_survi.index, autopct="%1.2f%%")
+mat.title('family survival ratio')
+mat.show()
+
 # Embarked Port Analysis
 
 print(ds.groupby("embarked")["survived"].mean())
@@ -352,7 +420,19 @@ S    0.336264
 '''
 
 print(ds.groupby("embarked")["survived"].count())
+mat.figure(figsize=(8,9))
+sea.countplot(data = data, x = data["embarked"], hue= data["embarked"])
+mat.xlabel("Port")
+mat.ylabel("survival_count")
+mat.title("embarked surive rate ")
+mat.show()
+# survival rate
+embark = ds.groupby("embarked")["survived"].mean()
 
+mat.bar(embark.index, embark.values)
+mat.title("Survival Rate by Embarkation Port")
+mat.ylabel("Survival Rate")
+mat.show()
 """
 survival count
 
@@ -362,8 +442,11 @@ Q    123
 S    910
 
 """
+
 print(" Correlation between all numeric clumns")
-print(ds.corr(numeric_only=True))
+corr = ds.corr(numeric_only=True)
+print(corr)
+
 
 """
 
@@ -389,5 +472,38 @@ fare     -0.028979 -0.557800  0.242458  0.179441  0.225100  1.000000
 
 
 '''
+# Gender × Class Heatmap
+sea.heatmap(corr, annot= True)
+mat.title("correlation")
+mat.show()
 
+heatmap_data = ds.pivot_table( 
+  values= "survived",
+    index="gender",
+    columns="pclass",
+    aggfunc="mean")
+sea.heatmap(heatmap_data, annot=True, cmap="Blues")
+mat.title("Gender  X Class relation")
+mat.show()
+
+
+# Fare vs Survival Boxplot
+fare = ds.groupby("fare")["survived"].mean()
+sea.boxplot( fare )
+mat.title("fare vs Survival Boxplot")
+mat.show()
+
+# Fare Distribution
+sea.kdeplot(ds["fare"])
+mat.title("Fare Distribution")
+mat.show()
+# Age Distribution
+sea.histplot(ds["age"], kde= True)
+mat.title("Age Distribution")
+mat.show()
+# Age vs Survival Boxplot
+Age = ds.groupby("age")["survived"].mean()
+sea.boxplot( Age )
+mat.title("Age vs Survival Boxplot")
+mat.show()
 ds.to_csv("Modify_Titanic_Dataset")
